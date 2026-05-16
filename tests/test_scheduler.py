@@ -17,9 +17,12 @@ os.environ.setdefault("API_ENV", "testing")
 
 
 def test_scheduler_disabled_by_default():
-    from app.core.config import settings
+    from app.core.config import Settings
 
-    assert settings.normalizer_scheduler_enabled is False
+    # Test the class-level Python default, not the live singleton (which may be
+    # overridden by .env in production environments).
+    field = Settings.model_fields["normalizer_scheduler_enabled"]
+    assert field.default is False
 
 
 def test_scheduler_config_defaults():
