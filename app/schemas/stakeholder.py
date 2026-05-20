@@ -11,8 +11,19 @@ class StakeholderSearchResult(BaseModel):
     telefone: Optional[str] = None
     nome_atual: Optional[str] = None
     tipo_relacionamento: Optional[str] = None
+    status_relacionamento: Optional[str] = None
     ultimo_contato_em: Optional[datetime] = None
     total_mensagens: Optional[int] = None
+    score_oportunidade: Optional[float] = None
+    score_risco: Optional[float] = None
+    tags: Optional[List[str]] = None
+
+
+class StakeholderListResponse(BaseModel):
+    total: int
+    page: int
+    page_size: int
+    items: List[StakeholderSearchResult]
 
 
 class StakeholderDetail(BaseModel):

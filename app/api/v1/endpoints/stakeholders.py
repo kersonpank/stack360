@@ -11,7 +11,7 @@ from app.repositories.timeline_repository import TimelineRepository
 from app.schemas.conversation import ConversationResponse
 from app.schemas.evidence import EvidenceResponse
 from app.schemas.opportunity import OpportunityResponse
-from app.schemas.stakeholder import StakeholderDetail, StakeholderSearchResult
+from app.schemas.stakeholder import StakeholderDetail, StakeholderListResponse, StakeholderSearchResult
 from app.schemas.timeline import TimelineEventResponse
 from app.services.conversation_service import StakeholderConversationService
 from app.services.opportunity_service import OpportunityService
@@ -19,6 +19,30 @@ from app.services.stakeholder_service import StakeholderService
 from app.services.timeline_service import TimelineService
 
 router = APIRouter(prefix="/stakeholders")
+
+
+@router.get("", response_model=StakeholderListResponse)
+def list_stakeholders(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(25, ge=5, le=100),
+    q: str | None = Query(None, min_length=1),
+    relationship_type: str | None = Query(None),
+    status: str | None = Query(None),
+    tag: str | None = Query(None),
+    sort: str = Query("last_interaction", pattern="^(name|last_interaction|messages|opportunity|risk|created)$"),
+    order: str = Query("desc", pattern="^(asc|desc)$"),
+    db: Session = Depends(get_db),
+):
+    return StakeholderService(ContactRepository(db)).list_stakeholders(
+        page=page,
+        page_size=page_size,
+        q=q,
+        relationship_type=relationship_type,
+        status=status,
+        tag=tag,
+        sort=sort,
+        order=order,
+    )
 
 
 @router.get("/search", response_model=List[StakeholderSearchResult])
