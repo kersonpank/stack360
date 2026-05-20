@@ -4,14 +4,17 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.router import router as v1_router
+from app.scheduler.enrichment_scheduler import enrichment_scheduler
 from app.scheduler.normalizer_scheduler import scheduler
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     scheduler.start()
+    enrichment_scheduler.start()
     yield
     await scheduler.stop()
+    await enrichment_scheduler.stop()
 
 
 app = FastAPI(

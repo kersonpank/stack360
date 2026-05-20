@@ -276,3 +276,106 @@ uvicorn app.main:app --host 0.0.0.0 --port 8001 --workers 1
 ```
 
 Usar `--workers 1` para evitar múltiplas instâncias do scheduler no mesmo processo.
+
+---
+
+## Enrichment Scheduler
+
+O **Enrichment Scheduler** aplica regras de negócio determinísticas sobre os contacts já normalizados, enriquecendo `tipo_relacionamento`, tags, scores, evidências e resumos de forma contínua e automática.
+
+### Pipeline completo
+
+```
+n8n → raw_evolution_messages
+        ↓ Normalizer Scheduler
+  contacts / conversations / messages
+        ↓ Enrichment Scheduler
+  enrichment_state / evidence / timeline
+```
+
+### Variáveis de ambiente — produção
+
+```env
+ENRICHMENT_SCHEDULER_ENABLED=true
+ENRICHMENT_INTERVAL_SECONDS=900
+ENRICHMENT_INCREMENTAL_LIMIT=100
+ENRICHMENT_INCREMENTAL_MAX_BATCHES=1
+ENRICHMENT_NIGHTLY_ENABLED=true
+ENRICHMENT_NIGHTLY_HOUR=3
+ENRICHMENT_NIGHTLY_LIMIT=1000
+ENRICHMENT_NIGHTLY_MAX_BATCHES=3
+ENRICHMENT_USE_LLM=false
+```
+
+### Variáveis de ambiente — desenvolvimento
+
+```env
+ENRICHMENT_SCHEDULER_ENABLED=false
+```
+
+> **Atenção:** Nunca habilitar o scheduler com `uvicorn --reload`. O `--reload` reinicia o processo a cada mudança de arquivo e pode iniciar múltiplas instâncias do scheduler.
+
+### Frequência das rodadas
+
+| Tipo | Frequência | Equivalente |
+|------|-----------|-------------|
+| Incremental | A cada `ENRICHMENT_INTERVAL_SECONDS` (default 900s / 15 min) | `--limit 100 --max-batches 1` |
+| Noturna | Uma vez por dia na hora `ENRICHMENT_NIGHTLY_HOUR` (default 3h UTC) | `--limit 1000 --max-batches 3` |
+
+### Controle de concorrência (advisory lock)
+
+Cada rodada adquire `pg_try_advisory_lock` antes de processar. Se o worker CLI ou outra instância já estiver rodando, a rodada é pulada (`skipped_lock`).
+
+### LLM — desabilitado por padrão
+
+```env
+ENRICHMENT_USE_LLM=false   # padrão — enriquecimento 100% determinístico
+LLM_ENABLED=false          # padrão
+```
+
+> **Nunca habilitar `ENRICHMENT_USE_LLM=true` sem autorização explícita.** O LLM gera custo por chamada e não deve ser ativado em massa. O enriquecimento determinístico (regras de negócio) já produz `tipo_relacionamento`, tags, scores e evidências sem IA.
+
+### Endpoint de status do Enrichment Scheduler
+
+```bash
+GET /api/v1/system/enrichment-scheduler-status
+```
+
+Retorna estado em memória do scheduler:
+
+```json
+{
+  "enabled": false,
+  "running": false,
+  "interval_seconds": 900,
+  "nightly_enabled": true,
+  "nightly_hour": 3,
+  "use_llm": false,
+  "last_run_started_at": null,
+  "last_run_finished_at": null,
+  "last_success_at": null,
+  "last_error_at": null,
+  "last_error_message": null,
+  "last_result": null,
+  "total_runs": 0,
+  "total_success": 0,
+  "total_failures": 0,
+  "total_skipped_by_lock": 0,
+  "next_run_estimate": null
+}
+```
+
+### Enriquecimento manual (CLI)
+
+Usar o worker CLI para rodar enriquecimento pontual sem habilitar o scheduler:
+
+```bash
+# Dry-run — sem gravar
+python -m app.workers.enrich_contacts --dry-run --limit 10
+
+# Lote real (até 100 sem confirmação extra)
+python -m app.workers.enrich_contacts --limit 100
+
+# Lote grande (requer flag)
+python -m app.workers.enrich_contacts --limit 1000 --confirm-large-run
+```

@@ -9,6 +9,7 @@ from app.repositories.conversation_repository import ConversationRepository
 from app.repositories.opportunity_repository import OpportunityRepository
 from app.repositories.timeline_repository import TimelineRepository
 from app.schemas.conversation import ConversationResponse
+from app.schemas.evidence import EvidenceResponse
 from app.schemas.opportunity import OpportunityResponse
 from app.schemas.stakeholder import StakeholderDetail, StakeholderSearchResult
 from app.schemas.timeline import TimelineEventResponse
@@ -46,3 +47,9 @@ def get_stakeholder_timeline(contact_id: str, db: Session = Depends(get_db)):
 @router.get("/{contact_id}/opportunities", response_model=List[OpportunityResponse])
 def get_stakeholder_opportunities(contact_id: str, db: Session = Depends(get_db)):
     return OpportunityService(OpportunityRepository(db)).get_opportunities(contact_id)
+
+
+@router.get("/{contact_id}/evidence", response_model=List[EvidenceResponse])
+def get_stakeholder_evidence(contact_id: str, db: Session = Depends(get_db)):
+    from app.repositories.evidence_repository import EvidenceRepository
+    return EvidenceRepository(read_db=db, write_db=db).get_by_contact_id(contact_id)

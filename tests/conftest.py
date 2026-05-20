@@ -4,6 +4,7 @@ os.environ.setdefault("DATABASE_URL", "postgresql+psycopg2://test:test@localhost
 os.environ.setdefault("API_ENV", "testing")
 # Force scheduler off in tests regardless of .env — env vars take precedence over .env in pydantic-settings
 os.environ["NORMALIZER_SCHEDULER_ENABLED"] = "false"
+os.environ["ENRICHMENT_SCHEDULER_ENABLED"] = "false"
 
 import pytest
 from fastapi.testclient import TestClient
