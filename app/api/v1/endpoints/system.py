@@ -5,6 +5,7 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.scheduler.enrichment_scheduler_state import enrichment_scheduler_state
 from app.scheduler.scheduler_state import scheduler_state
+from app.schemas.action import ActionStatusResponse
 from app.schemas.system import (
     EnrichmentSchedulerStatusResponse,
     EnrichmentStatusResponse,
@@ -71,3 +72,10 @@ def normalizer_scheduler_status():
         total_skipped_by_lock=scheduler_state.total_skipped_by_lock,
         next_run_estimate=scheduler_state.next_run_estimate,
     )
+
+
+@router.get("/action-status", response_model=ActionStatusResponse)
+def action_status(db: Session = Depends(get_db)):
+    from app.repositories.action_repository import ActionRepository
+    data = ActionRepository(read_db=db, write_db=db).get_action_system_status()
+    return ActionStatusResponse(**data)

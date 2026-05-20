@@ -53,3 +53,11 @@ def get_stakeholder_opportunities(contact_id: str, db: Session = Depends(get_db)
 def get_stakeholder_evidence(contact_id: str, db: Session = Depends(get_db)):
     from app.repositories.evidence_repository import EvidenceRepository
     return EvidenceRepository(read_db=db, write_db=db).get_by_contact_id(contact_id)
+
+
+@router.get("/{contact_id}/actions")
+def get_stakeholder_actions(contact_id: str, db: Session = Depends(get_db)):
+    from app.repositories.action_repository import ActionRepository
+    from app.schemas.action import ActionResponse
+    rows = ActionRepository(read_db=db, write_db=db).get_actions_for_contact(contact_id)
+    return [ActionResponse(**r) for r in rows]
