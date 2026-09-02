@@ -1,0 +1,20 @@
+.git
+.venv
+**/__pycache__
+**/*.pyc
+.pytest_cache
+.code-review-graph
+*.log
+.env
+deploy/.env.prod
+deploy/caddy_data
+deploy/caddy_config
+
+# frontend não entra na imagem da API
+frontend/node_modules
+frontend/.next
+frontend/out
+
+tests
+docs
+*.md

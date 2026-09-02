@@ -16,6 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.stack360.api.errors import register_exception_handlers
 from app.stack360.api.router import router as stack360_router
+from app.stack360.config import get_settings
 
 app = FastAPI(
     title="Stack360 Canonical Core",
@@ -27,7 +28,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[f"http://{host}:{port}" for host in ("localhost", "127.0.0.1") for port in range(3000, 3006)],
+    allow_origins=get_settings().cors_origin_list,  # localhost:3000-3005 + STACK360_CORS_ORIGINS
     allow_credentials=False,  # auth é por API key, não cookie
     allow_methods=["*"],
     allow_headers=["*"],

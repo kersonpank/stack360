@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-ink: #1a1a1a;
+  --color-paper: #f5f0e8;
+  --color-panel: #fffaf1;
+  --color-yellow: #ffcc00;
+  --color-red: #e63b2e;
+  --color-blue: #0055ff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--color-paper);
+}
+
+body {
+  margin: 0;
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+
+button,
+a,
+input,
+textarea {
+  font: inherit;
+}
+
+button,
+a {
+  touch-action: manipulation;
+}
+
+::selection {
+  background: var(--color-yellow);
+  color: var(--color-ink);
+}
+
+@layer components {
+  .brutal-border {
+    border: 3px solid var(--color-ink);
+  }
+
+  .brutal-border-thin {
+    border: 2px solid var(--color-ink);
+  }
+
+  .brutal-shadow {
+    box-shadow: 5px 5px 0 0 var(--color-ink);
+  }
+
+  .brutal-shadow-sm {
+    box-shadow: 3px 3px 0 0 var(--color-ink);
+  }
+
+  .brutal-focus {
+    outline: 3px solid var(--color-blue);
+    outline-offset: 2px;
+  }
+}

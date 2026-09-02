@@ -1,0 +1,24 @@
+# Caddy >= 2.8. Variáveis vêm de deploy/.env.prod (env_file do serviço caddy).
+#
+#   DOMAIN=api.seudominio.com   -> HTTPS automático (Let's Encrypt)
+#   DOMAIN=:80                  -> só HTTP, para testar sem domínio
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	# A API já exige API key (Authorization: Bearer st_...) em todas as rotas.
+	# Aqui só protegemos a documentação interativa contra bisbilhoteiro casual.
+	@ui path /docs /docs/* /redoc /redoc/* /openapi.json
+	basic_auth @ui {
+		{$BASIC_AUTH_USER} {$BASIC_AUTH_HASH}
+	}
+
+	reverse_proxy api:8000
+
+	encode gzip
+	log {
+		output stdout
+		format console
+	}
+}

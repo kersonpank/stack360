@@ -1,5 +1,5 @@
 # Postgres LOCAL para dev + testes do Stack360 Integration Core.
-# NÃO é produção. Não substitui o banco legado (203.0.113.10).
+# NÃO é produção. Para deploy real, ver docs/DEPLOY.md (deploy/docker-compose.prod.yml).
 services:
   stack360-db:
     image: postgres:16-alpine

@@ -8,3 +8,16 @@ __pycache__/
 dist/
 build/
 *.log
+
+# deploy
+deploy/.env.prod
+deploy/caddy_data/
+deploy/caddy_config/
+
+# frontend (reforço — frontend/.gitignore já cobre)
+node_modules/
+.next/
+out/
+
+# ferramentas
+.code-review-graph/

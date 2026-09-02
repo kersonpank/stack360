@@ -39,6 +39,16 @@ class Stack360Settings(BaseSettings):
     read_page_default: int = 50
     read_page_max: int = 200
 
+    # CORS: origens EXTRA autorizadas no navegador (CSV). localhost:3000-3005
+    # já é sempre permitido para dev. Em produção: domínio do frontend.
+    cors_origins: str = ""
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        base = [f"http://{host}:{port}" for host in ("localhost", "127.0.0.1") for port in range(3000, 3006)]
+        extra = [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+        return base + extra
+
 
 @lru_cache
 def get_settings() -> Stack360Settings:
