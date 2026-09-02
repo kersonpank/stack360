@@ -1,0 +1,12 @@
+# Stack360 Integration Core — dependências ADICIONAIS.
+# Instale por cima do requirements.txt legado:
+#   pip install -r requirements.txt -r requirements-stack360.txt
+#
+# Observação: o MCP SDK declara starlette/sse-starlette recentes para o
+# transporte HTTP/SSE, que NÃO usamos (só stdio). Mantenha o starlette
+# na faixa exigida pelo FastAPI legado (<0.42) — o servidor MCP stdio
+# funciona mesmo assim. O aviso de conflito do pip é inócuo.
+phonenumbers>=8.13,<10
+cryptography>=42,<52
+mcp>=1.2,<3
+starlette>=0.40.0,<0.42.0

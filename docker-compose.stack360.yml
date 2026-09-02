@@ -1,0 +1,23 @@
+# Postgres LOCAL para dev + testes do Stack360 Integration Core.
+# NÃO é produção. Não substitui o banco legado (203.0.113.10).
+services:
+  stack360-db:
+    image: postgres:16-alpine
+    container_name: stack360-db
+    environment:
+      POSTGRES_USER: stack360
+      POSTGRES_PASSWORD: stack360
+      POSTGRES_DB: stack360_dev
+    ports:
+      - "5433:5432"
+    volumes:
+      - stack360_pgdata:/var/lib/postgresql/data
+      - ./scripts/stack360_init_test_db.sql:/docker-entrypoint-initdb.d/10-test-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stack360 -d stack360_dev"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  stack360_pgdata:
