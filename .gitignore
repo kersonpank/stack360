@@ -1,4 +1,8 @@
 .env
+.env.*
+!.env.example
+!deploy/.env.prod.example
+!frontend/.env.example
 .venv/
 __pycache__/
 .pytest_cache/
@@ -8,6 +12,15 @@ __pycache__/
 dist/
 build/
 *.log
+
+# segredos/credenciais
+*.pem
+*.key
+*.p12
+*.pfx
+credentials*.json
+*.dump
+*.sql.gz
 
 # deploy
 deploy/.env.prod
