@@ -1,0 +1,91 @@
+# Stack360 — Docker Swarm stack para VPS que JÁ roda Traefik (Portainer > Stacks).
+#
+# Use este arquivo em vez de docker-compose.prod.yml quando a VPS já tem
+# Traefik cuidando de HTTPS/roteamento para outros sites (rede overlay externa).
+# Nesse modo o Swarm não builda imagem local — a API vem pré-buildada do GHCR
+# via .github/workflows/deploy-stack360.yml (build automático a cada push em main).
+#
+# Variáveis a preencher em Portainer > Stacks > stack360 > Environment variables
+# (nunca commitar valores reais):
+#   STACK360_IMAGE          ex.: ghcr.io/<seu-usuario-github>/stack360-api:latest
+#   TRAEFIK_NETWORK         nome da rede overlay externa que o Traefik já usa
+#   TRAEFIK_CERTRESOLVER    nome do certresolver já configurado no Traefik
+#   TRAEFIK_ENTRYPOINT      entrypoint HTTPS do Traefik (geralmente "websecure")
+#   DOMAIN                  domínio que aponta (DNS A) para esta VPS
+#   POSTGRES_PASSWORD       senha do Postgres deste stack (não é o banco legado)
+#   STACK360_DOCS_HTPASSWD  hash bcrypt "usuario:hash" para Basic Auth do /docs
+#     gerar: docker run --rm httpd:2.4-alpine htpasswd -nbB admin 'SUA_SENHA'
+#   STACK360_CORS_ORIGINS, STACK360_WEBHOOK_SECRET_KEY — opcionais (vazio ok)
+
+version: "3.8"
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: stack360
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: stack360
+    volumes:
+      - stack360_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stack360 -d stack360"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+
+  api:
+    image: ${STACK360_IMAGE}
+    environment:
+      STACK360_DATABASE_URL: postgresql+psycopg2://stack360:${POSTGRES_PASSWORD}@db:5432/stack360
+      DATABASE_URL: postgresql+psycopg2://stack360:${POSTGRES_PASSWORD}@db:5432/stack360
+      NORMALIZER_DATABASE_URL: postgresql+psycopg2://stack360:${POSTGRES_PASSWORD}@db:5432/stack360
+      STACK360_CORS_ORIGINS: ${STACK360_CORS_ORIGINS:-}
+      STACK360_WEBHOOK_SECRET_KEY: ${STACK360_WEBHOOK_SECRET_KEY:-}
+      STACK360_MCP_AUTH_TTL: ${STACK360_MCP_AUTH_TTL:-30}
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-2}
+    networks:
+      - internal
+      - proxy
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+      labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=${TRAEFIK_NETWORK}"
+
+        # /docs, /redoc, /openapi.json atrás de Basic Auth.
+        - "traefik.http.middlewares.stack360-docs-auth.basicauth.users=${STACK360_DOCS_HTPASSWD}"
+        - "traefik.http.routers.stack360-docs.rule=Host(`${DOMAIN}`) && (PathPrefix(`/docs`) || PathPrefix(`/redoc`) || PathPrefix(`/openapi.json`))"
+        - "traefik.http.routers.stack360-docs.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}"
+        - "traefik.http.routers.stack360-docs.tls.certresolver=${TRAEFIK_CERTRESOLVER}"
+        - "traefik.http.routers.stack360-docs.priority=100"
+        - "traefik.http.routers.stack360-docs.middlewares=stack360-docs-auth"
+        - "traefik.http.routers.stack360-docs.service=stack360-api"
+
+        # Resto da API — já exige API key própria em toda rota.
+        - "traefik.http.routers.stack360-api.rule=Host(`${DOMAIN}`)"
+        - "traefik.http.routers.stack360-api.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}"
+        - "traefik.http.routers.stack360-api.tls.certresolver=${TRAEFIK_CERTRESOLVER}"
+        - "traefik.http.routers.stack360-api.priority=1"
+        - "traefik.http.routers.stack360-api.service=stack360-api"
+
+        - "traefik.http.services.stack360-api.loadbalancer.server.port=8000"
+
+networks:
+  internal:
+    driver: overlay
+  proxy:
+    external: true
+    name: ${TRAEFIK_NETWORK}
+
+volumes:
+  stack360_pgdata:

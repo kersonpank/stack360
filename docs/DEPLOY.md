@@ -13,6 +13,10 @@ O `docker compose` abaixo sobe 3 containers:
 | `api` | `uvicorn app.stack360.main:app` — **só na rede interna** |
 | `caddy` | reverse proxy, HTTPS automático (Let's Encrypt), Basic Auth no `/docs` |
 
+> **Sua VPS já roda Traefik** (outros sites/stacks numa rede overlay externa)?
+> Esse Caddy embutido vai brigar pela porta 80/443. Use a [seção 10](#10-alternativa--vps-com-traefik-já-configurado-swarm)
+> em vez deste fluxo — mesma API, mesmo banco, só troca o proxy pelo Traefik que já existe.
+
 ---
 
 ## 1. Pré-requisitos na VPS
@@ -180,3 +184,84 @@ Quando estiver pronto, o caminho mais simples é **Vercel**:
 
 Alternativa: adicionar um serviço `web` (Node) ao `docker-compose.prod.yml` e uma
 rota no `Caddyfile` — só vale a pena se você não quiser depender da Vercel.
+
+## 10. Alternativa — VPS com Traefik já configurado (Swarm)
+
+Se a VPS já roda **Traefik** (Docker Swarm) cuidando de HTTPS/roteamento para outros
+sites, não suba o Caddy deste repo — ele ia disputar as portas 80/443 com o Traefik
+existente. Use `deploy/docker-stack.swarm.yml` em vez de `docker-compose.prod.yml`.
+
+Diferença principal: Swarm **não builda imagem local** (`build:` não é suportado em
+stacks Swarm) — a imagem da API vem pré-buildada do GHCR, publicada automaticamente
+pelo workflow `.github/workflows/deploy-stack360.yml` a cada push em `main`.
+
+### 10.1 Habilitar o build automático
+
+1. No GitHub do seu fork: **Settings → Actions → General → Workflow permissions** →
+   marque "Read and write permissions" (necessário pro workflow publicar no GHCR).
+2. Dê um `git push` em `main` — o workflow builda e publica
+   `ghcr.io/<seu-usuario-github>/stack360-api:latest`.
+3. Por padrão o pacote fica **privado** no GHCR. Ou torne-o público
+   (GitHub → seu perfil → Packages → stack360-api → Package settings → Change visibility),
+   ou configure no Portainer uma credencial de registry (Settings → Registries) apontando
+   pro GHCR com um Personal Access Token (escopo `read:packages`).
+
+### 10.2 Descobrir os nomes já usados pelo seu Traefik
+
+Antes de criar a stack, confirme (olhando outra stack já rodando, ou com o CLI na VPS):
+
+```bash
+docker network ls --filter driver=overlay   # nome da rede externa do Traefik
+docker service inspect <algum-servico-com-traefik> --format '{{json .Spec.Labels}}'
+# ou olhe os labels de outra stack no Portainer (Stacks > ... > Editor)
+```
+
+Você precisa saber: nome da **rede overlay externa**, nome do **certresolver**, e o
+**entrypoint** HTTPS (geralmente `websecure`).
+
+### 10.3 Criar a stack no Portainer
+
+**Stacks → Add stack → Repository**, mesmo repositório, mas:
+- Compose path: `deploy/docker-stack.swarm.yml`
+- **Environment variables**:
+
+  ```
+  STACK360_IMAGE=ghcr.io/<seu-usuario-github>/stack360-api:latest
+  TRAEFIK_NETWORK=<rede overlay externa do Traefik>
+  TRAEFIK_CERTRESOLVER=<certresolver já configurado>
+  TRAEFIK_ENTRYPOINT=websecure
+  DOMAIN=stack360.seudominio.com.br
+  POSTGRES_PASSWORD=<senha forte>
+  STACK360_DOCS_HTPASSWD=<ver abaixo>
+  STACK360_CORS_ORIGINS=
+  STACK360_WEBHOOK_SECRET_KEY=
+  ```
+
+  Gere `STACK360_DOCS_HTPASSWD` (hash bcrypt no formato `usuario:hash` que o Traefik
+  entende):
+
+  ```bash
+  docker run --rm httpd:2.4-alpine htpasswd -nbB admin 'suaSenhaForte'
+  ```
+
+- **Deploy the stack.**
+
+### 10.4 Verificar e fazer bootstrap
+
+```bash
+curl -s https://stack360.seudominio.com.br/api/v1/health
+# -> {"status":"ok","service":"stack360-core"}
+
+CID=$(docker ps --filter "name=stack360_api" --format "{{.ID}}" | head -1)
+docker exec "$CID" python -m app.stack360.admin create-workspace --slug stack360-empresas --name "Stack360 Empresas"
+docker exec "$CID" python -m app.stack360.admin create-source --workspace stack360-empresas --key minha-app --name "Minha App" --type custom
+docker exec "$CID" python -m app.stack360.admin create-api-key --workspace stack360-empresas --source minha-app --name ingest --scopes ingest
+docker exec "$CID" python -m app.stack360.admin create-api-key --workspace stack360-empresas --name read --scopes read,mcp
+```
+
+### 10.5 Redeploy automático (opcional)
+
+No Portainer: Stacks → `stack360` → copie a URL de **Webhook**. Cole como secret
+`PORTAINER_WEBHOOK_URL` no GitHub (Settings → Secrets and variables → Actions) —
+cada push em `main` builda, publica no GHCR **e** chama o webhook pra redeployar.
+Sem o secret configurado, esse passo é simplesmente pulado (sem erro).
