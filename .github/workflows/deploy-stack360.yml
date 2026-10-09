@@ -1,5 +1,6 @@
 name: Build & Deploy Stack360
 
+# Re-trigger: workflow permissions (Settings > Actions > General) habilitadas em 2026-10-09.
 on:
   push:
     branches: [main]
@@ -44,6 +45,9 @@ jobs:
       # Configure este secret no repositório (Settings > Secrets and variables > Actions)
       # DEPOIS de criar a stack pela primeira vez no Portainer: Stacks > stack360 >
       # copie o "Webhook" da stack. Até lá, este passo é pulado sem erro.
+      # (secrets não pode ser usado direto em `if:` — passa por env var)
       - name: Trigger Portainer redeploy
-        if: ${{ secrets.PORTAINER_WEBHOOK_URL != '' }}
-        run: curl -fsS -X POST "${{ secrets.PORTAINER_WEBHOOK_URL }}"
+        if: ${{ env.PORTAINER_WEBHOOK_URL != '' }}
+        env:
+          PORTAINER_WEBHOOK_URL: ${{ secrets.PORTAINER_WEBHOOK_URL }}
+        run: curl -fsS -X POST "$PORTAINER_WEBHOOK_URL"
