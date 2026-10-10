@@ -7,6 +7,7 @@ import {
   Gauge,
   Lightbulb,
   MessageSquareText,
+  RadioTower,
   Settings,
   Truck,
   Users,
@@ -14,11 +15,13 @@ import {
 
 const navItems = [
   { href: "/", label: "Overview", icon: Gauge },
-  { href: "/stakeholders", label: "Stakeholders", icon: Users },
-  { href: "/conversations", label: "Conversations", icon: MessageSquareText },
+  { href: "/sources", label: "Fontes", icon: RadioTower },
+  { href: "/people", label: "Pessoas", icon: Users },
+  { href: "/companies", label: "Companies", icon: Building2 },
+  { href: "/stakeholders", label: "Stakeholders (legado)", icon: Users },
+  { href: "/conversations", label: "Conversations (legado)", icon: MessageSquareText },
   { href: "/opportunities", label: "Opportunities", icon: Lightbulb },
   { href: "/drivers", label: "Drivers", icon: Truck },
-  { href: "/companies", label: "Companies", icon: Building2 },
 ];
 
 export function Sidebar() {
