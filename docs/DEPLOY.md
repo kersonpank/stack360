@@ -192,19 +192,24 @@ sites, não suba o Caddy deste repo — ele ia disputar as portas 80/443 com o T
 existente. Use `deploy/docker-stack.swarm.yml` em vez de `docker-compose.prod.yml`.
 
 Diferença principal: Swarm **não builda imagem local** (`build:` não é suportado em
-stacks Swarm) — a imagem da API vem pré-buildada do GHCR, publicada automaticamente
-pelo workflow `.github/workflows/deploy-stack360.yml` a cada push em `main`.
+stacks Swarm) — tanto a API quanto o dashboard (`frontend/`) vêm pré-buildados do
+GHCR, publicados automaticamente por dois workflows independentes:
+`.github/workflows/deploy-stack360.yml` (API, dispara em mudanças fora de
+`frontend/**`/`docs/**`/`*.md`) e `.github/workflows/deploy-stack360-web.yml`
+(dashboard, dispara só em mudanças sob `frontend/**`).
 
 ### 10.1 Habilitar o build automático
 
 1. No GitHub do seu fork: **Settings → Actions → General → Workflow permissions** →
-   marque "Read and write permissions" (necessário pro workflow publicar no GHCR).
-2. Dê um `git push` em `main` — o workflow builda e publica
-   `ghcr.io/<seu-usuario-github>/stack360-api:latest`.
-3. Por padrão o pacote fica **privado** no GHCR. Ou torne-o público
-   (GitHub → seu perfil → Packages → stack360-api → Package settings → Change visibility),
-   ou configure no Portainer uma credencial de registry (Settings → Registries) apontando
-   pro GHCR com um Personal Access Token (escopo `read:packages`).
+   marque "Read and write permissions" (necessário pros workflows publicarem no GHCR).
+2. Dê um `git push` em `main` — os workflows buildam e publicam
+   `ghcr.io/<seu-usuario-github>/stack360-api:latest` e
+   `ghcr.io/<seu-usuario-github>/stack360-web:latest`.
+3. Por padrão os pacotes ficam **privados** no GHCR. Ou torne-os públicos
+   (GitHub → seu perfil → Packages → stack360-api / stack360-web → Package settings
+   → Change visibility), ou configure no Portainer uma credencial de registry
+   (Settings → Registries) apontando pro GHCR com um Personal Access Token
+   (escopo `read:packages`).
 
 ### 10.2 Descobrir os nomes já usados pelo seu Traefik
 
@@ -227,12 +232,15 @@ Você precisa saber: nome da **rede overlay externa**, nome do **certresolver**,
 
   ```
   STACK360_IMAGE=ghcr.io/<seu-usuario-github>/stack360-api:latest
+  WEB_IMAGE=ghcr.io/<seu-usuario-github>/stack360-web:latest
   TRAEFIK_NETWORK=<rede overlay externa do Traefik>
   TRAEFIK_CERTRESOLVER=<certresolver já configurado>
   TRAEFIK_ENTRYPOINT=websecure
-  DOMAIN=stack360.seudominio.com.br
+  API_DOMAIN=api360.seudominio.com.br
+  WEB_DOMAIN=stack360.seudominio.com.br
   POSTGRES_PASSWORD=<senha forte>
   STACK360_DOCS_HTPASSWD=<ver abaixo>
+  STACK360_API_KEY=<ver 10.4 — gerada DEPOIS do primeiro deploy da API>
   STACK360_CORS_ORIGINS=
   STACK360_WEBHOOK_SECRET_KEY=
   ```
@@ -244,19 +252,32 @@ Você precisa saber: nome da **rede overlay externa**, nome do **certresolver**,
   docker run --rm httpd:2.4-alpine htpasswd -nbB admin 'suaSenhaForte'
   ```
 
+  Na primeira vez, suba só `db`+`api` primeiro (deixe `STACK360_API_KEY` vazio e
+  `web` vai reiniciar até ter uma key válida — não tem problema, veja 10.4), ou
+  gere a key antes num container `api` isolado.
+
 - **Deploy the stack.**
 
 ### 10.4 Verificar e fazer bootstrap
 
 ```bash
-curl -s https://stack360.seudominio.com.br/api/v1/health
+curl -s https://api360.seudominio.com.br/api/v1/health
 # -> {"status":"ok","service":"stack360-core"}
 
 CID=$(docker ps --filter "name=stack360_api" --format "{{.ID}}" | head -1)
 docker exec "$CID" python -m app.stack360.admin create-workspace --slug stack360-empresas --name "Stack360 Empresas"
 docker exec "$CID" python -m app.stack360.admin create-source --workspace stack360-empresas --key minha-app --name "Minha App" --type custom
 docker exec "$CID" python -m app.stack360.admin create-api-key --workspace stack360-empresas --source minha-app --name ingest --scopes ingest
-docker exec "$CID" python -m app.stack360.admin create-api-key --workspace stack360-empresas --name read --scopes read,mcp
+docker exec "$CID" python -m app.stack360.admin create-api-key --workspace stack360-empresas --name web --scopes read
+```
+
+A última chave (`scopes read`) é o valor de `STACK360_API_KEY` — cole no Portainer
+e dê **Update the stack** pra o serviço `web` pegar a key e conseguir falar com a
+API (pela rede interna do Swarm, `http://api:8000` — não pelo domínio público).
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" https://stack360.seudominio.com.br/
+# -> 200 (dashboard servindo HTML)
 ```
 
 ### 10.5 Redeploy automático (opcional)

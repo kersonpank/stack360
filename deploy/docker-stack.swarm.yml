@@ -8,13 +8,17 @@
 # Variáveis a preencher em Portainer > Stacks > stack360 > Environment variables
 # (nunca commitar valores reais):
 #   STACK360_IMAGE          ex.: ghcr.io/<seu-usuario-github>/stack360-api:latest
+#   WEB_IMAGE               ex.: ghcr.io/<seu-usuario-github>/stack360-web:latest
 #   TRAEFIK_NETWORK         nome da rede overlay externa que o Traefik já usa
 #   TRAEFIK_CERTRESOLVER    nome do certresolver já configurado no Traefik
 #   TRAEFIK_ENTRYPOINT      entrypoint HTTPS do Traefik (geralmente "websecure")
-#   DOMAIN                  domínio que aponta (DNS A) para esta VPS
+#   API_DOMAIN              domínio da API (DNS A pra esta VPS) — ex.: api360.seudominio.com.br
+#   WEB_DOMAIN              domínio do dashboard (DNS A pra esta VPS) — ex.: app.seudominio.com.br
 #   POSTGRES_PASSWORD       senha do Postgres deste stack (não é o banco legado)
 #   STACK360_DOCS_HTPASSWD  hash bcrypt "usuario:hash" para Basic Auth do /docs
 #     gerar: docker run --rm httpd:2.4-alpine htpasswd -nbB admin 'SUA_SENHA'
+#   STACK360_API_KEY        API key (st_..., scope read) que o dashboard usa pra falar com a API
+#     gerar dentro do container api: python -m app.stack360.admin create-api-key --workspace <slug> --name web --scopes read
 #   STACK360_CORS_ORIGINS, STACK360_WEBHOOK_SECRET_KEY — opcionais (vazio ok)
 
 version: "3.8"
@@ -64,7 +68,7 @@ services:
 
         # /docs, /redoc, /openapi.json atrás de Basic Auth.
         - "traefik.http.middlewares.stack360-docs-auth.basicauth.users=${STACK360_DOCS_HTPASSWD}"
-        - "traefik.http.routers.stack360-docs.rule=Host(`${DOMAIN}`) && (PathPrefix(`/docs`) || PathPrefix(`/redoc`) || PathPrefix(`/openapi.json`))"
+        - "traefik.http.routers.stack360-docs.rule=Host(`${API_DOMAIN}`) && (PathPrefix(`/docs`) || PathPrefix(`/redoc`) || PathPrefix(`/openapi.json`))"
         - "traefik.http.routers.stack360-docs.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}"
         - "traefik.http.routers.stack360-docs.tls.certresolver=${TRAEFIK_CERTRESOLVER}"
         - "traefik.http.routers.stack360-docs.priority=100"
@@ -72,13 +76,37 @@ services:
         - "traefik.http.routers.stack360-docs.service=stack360-api"
 
         # Resto da API — já exige API key própria em toda rota.
-        - "traefik.http.routers.stack360-api.rule=Host(`${DOMAIN}`)"
+        - "traefik.http.routers.stack360-api.rule=Host(`${API_DOMAIN}`)"
         - "traefik.http.routers.stack360-api.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}"
         - "traefik.http.routers.stack360-api.tls.certresolver=${TRAEFIK_CERTRESOLVER}"
         - "traefik.http.routers.stack360-api.priority=1"
         - "traefik.http.routers.stack360-api.service=stack360-api"
 
         - "traefik.http.services.stack360-api.loadbalancer.server.port=8000"
+
+  web:
+    image: ${WEB_IMAGE}
+    environment:
+      # Fala com a API direto pela rede interna do Swarm — sem round-trip
+      # pelo Traefik/domínio público pra tráfego servidor-servidor.
+      STACK360_API_BASE_URL: http://api:8000
+      STACK360_API_KEY: ${STACK360_API_KEY}
+    networks:
+      - internal
+      - proxy
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+      labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=${TRAEFIK_NETWORK}"
+        - "traefik.http.routers.stack360-web.rule=Host(`${WEB_DOMAIN}`)"
+        - "traefik.http.routers.stack360-web.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}"
+        - "traefik.http.routers.stack360-web.tls.certresolver=${TRAEFIK_CERTRESOLVER}"
+        - "traefik.http.routers.stack360-web.service=stack360-web"
+        - "traefik.http.services.stack360-web.loadbalancer.server.port=3000"
 
 networks:
   internal:
