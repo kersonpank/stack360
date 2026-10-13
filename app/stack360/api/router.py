@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from app.stack360.api import (
+    admin,
     companies,
     experiences,
     health,
@@ -16,6 +17,7 @@ from app.stack360.api import (
 
 router = APIRouter(prefix="/api/v1")
 router.include_router(health.router)
+router.include_router(admin.router)
 router.include_router(ingest.router)
 router.include_router(webhooks.router)
 router.include_router(people.router)

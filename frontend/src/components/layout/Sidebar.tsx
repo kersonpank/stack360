@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Building2,
   Gauge,
+  KeyRound,
   Lightbulb,
+  LogOut,
   MessageSquareText,
   RadioTower,
   Settings,
@@ -18,6 +20,7 @@ const navItems = [
   { href: "/sources", label: "Fontes", icon: RadioTower },
   { href: "/people", label: "Pessoas", icon: Users },
   { href: "/companies", label: "Companies", icon: Building2 },
+  { href: "/settings/api-keys", label: "API Keys", icon: KeyRound },
   { href: "/stakeholders", label: "Stakeholders (legado)", icon: Users },
   { href: "/conversations", label: "Conversations (legado)", icon: MessageSquareText },
   { href: "/opportunities", label: "Opportunities", icon: Lightbulb },
@@ -26,6 +29,13 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  async function logout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.replace("/login");
+    router.refresh();
+  }
 
   return (
     <aside className="fixed left-0 top-0 z-40 hidden h-screen w-72 flex-col border-r-[4px] border-ink bg-ink p-5 text-paper md:flex">
@@ -80,6 +90,14 @@ export function Sidebar() {
           <Settings className="h-5 w-5" />
           Settings
         </Link>
+        <button
+          type="button"
+          onClick={logout}
+          className="mt-2 flex w-full items-center gap-3 border-2 border-transparent px-4 py-3 font-headline text-sm font-black uppercase tracking-widest text-paper transition-colors hover:border-paper hover:bg-red hover:text-white focus-visible:brutal-focus"
+        >
+          <LogOut className="h-5 w-5" />
+          Sair
+        </button>
       </div>
     </aside>
   );

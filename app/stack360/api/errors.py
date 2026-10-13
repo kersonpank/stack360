@@ -30,6 +30,7 @@ STACK360_PREFIXES = (
     "/api/v1/runs",
     "/api/v1/sources",
     "/api/v1/resolution-cases",
+    "/api/v1/admin",
 )
 
 

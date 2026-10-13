@@ -241,6 +241,10 @@ Você precisa saber: nome da **rede overlay externa**, nome do **certresolver**,
   POSTGRES_PASSWORD=<senha forte>
   STACK360_DOCS_HTPASSWD=<ver abaixo>
   STACK360_API_KEY=<ver 10.4 — gerada DEPOIS do primeiro deploy da API>
+  STACK360_ADMIN_API_KEY=<ver 10.4 — scope admin, pra /settings/api-keys>
+  ADMIN_USERNAME=admin
+  ADMIN_PASSWORD_HASH=<ver abaixo — login do dashboard>
+  SESSION_SECRET=<ver abaixo>
   STACK360_CORS_ORIGINS=
   STACK360_WEBHOOK_SECRET_KEY=
   ```
@@ -252,9 +256,25 @@ Você precisa saber: nome da **rede overlay externa**, nome do **certresolver**,
   docker run --rm httpd:2.4-alpine htpasswd -nbB admin 'suaSenhaForte'
   ```
 
-  Na primeira vez, suba só `db`+`api` primeiro (deixe `STACK360_API_KEY` vazio e
-  `web` vai reiniciar até ter uma key válida — não tem problema, veja 10.4), ou
-  gere a key antes num container `api` isolado.
+  Gere também `ADMIN_PASSWORD_HASH` (login do **dashboard**, não confundir com o
+  `STACK360_DOCS_HTPASSWD` acima — mesmo comando, mas aqui use só a parte depois
+  do `:` da saída, ex.: `$2y$10$...`, já que o frontend compara o hash sozinho,
+  sem o Traefik):
+
+  ```bash
+  docker run --rm httpd:2.4-alpine htpasswd -nbB admin 'outraSenhaForte'
+  # pega só o que vem depois de "admin:"
+  ```
+
+  E `SESSION_SECRET` (assina o cookie de login):
+
+  ```bash
+  openssl rand -base64 32
+  ```
+
+  Na primeira vez, suba só `db`+`api` primeiro (deixe `STACK360_API_KEY` e
+  `STACK360_ADMIN_API_KEY` vazios e `web` vai reiniciar até ter keys válidas —
+  não tem problema, veja 10.4), ou gere as keys antes num container `api` isolado.
 
 - **Deploy the stack.**
 
@@ -269,11 +289,15 @@ docker exec "$CID" python -m app.stack360.admin create-workspace --slug stack360
 docker exec "$CID" python -m app.stack360.admin create-source --workspace stack360-empresas --key minha-app --name "Minha App" --type custom
 docker exec "$CID" python -m app.stack360.admin create-api-key --workspace stack360-empresas --source minha-app --name ingest --scopes ingest
 docker exec "$CID" python -m app.stack360.admin create-api-key --workspace stack360-empresas --name web --scopes read
+docker exec "$CID" python -m app.stack360.admin create-api-key --workspace stack360-empresas --name admin-bootstrap --scopes admin
 ```
 
-A última chave (`scopes read`) é o valor de `STACK360_API_KEY` — cole no Portainer
-e dê **Update the stack** pra o serviço `web` pegar a key e conseguir falar com a
-API (pela rede interna do Swarm, `http://api:8000` — não pelo domínio público).
+A chave `scopes read` é o `STACK360_API_KEY`; a `scopes admin` é o
+`STACK360_ADMIN_API_KEY` (só ela consegue criar/revogar outras keys pela tela
+`/settings/api-keys` — guarde com cuidado, é a mais poderosa do sistema). Cole as
+duas no Portainer junto com `ADMIN_PASSWORD_HASH`/`SESSION_SECRET` e dê **Update
+the stack** pra o serviço `web` pegar tudo e conseguir falar com a API (pela rede
+interna do Swarm, `http://api:8000` — não pelo domínio público).
 
 ```bash
 curl -s -o /dev/null -w "%{http_code}\n" https://stack360.seudominio.com.br/

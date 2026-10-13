@@ -2,6 +2,14 @@ import "server-only";
 
 import { getStack360ApiBaseUrl, getStack360ApiKey } from "./env";
 
+export type Stack360FetchOptions = {
+  searchParams?: URLSearchParams;
+  method?: "GET" | "POST";
+  body?: unknown;
+  /** Key a usar nesta chamada — default é a de leitura (STACK360_API_KEY). */
+  apiKey?: string;
+};
+
 export type Stack360ErrorBody = {
   code: string;
   message: string;
@@ -30,21 +38,22 @@ export class Stack360UnreachableError extends Error {
   }
 }
 
-export async function stack360Fetch<T>(
-  path: string,
-  options: { searchParams?: URLSearchParams } = {},
-): Promise<T> {
+export async function stack360Fetch<T>(path: string, options: Stack360FetchOptions = {}): Promise<T> {
   const query = options.searchParams?.toString();
   const url = `${getStack360ApiBaseUrl()}${path}${query ? `?${query}` : ""}`;
+  const method = options.method ?? "GET";
 
   let response: Response;
   try {
     response = await fetch(url, {
+      method,
       cache: "no-store",
       headers: {
-        Authorization: `Bearer ${getStack360ApiKey()}`,
+        Authorization: `Bearer ${options.apiKey ?? getStack360ApiKey()}`,
         Accept: "application/json",
+        ...(options.body !== undefined ? { "Content-Type": "application/json" } : {}),
       },
+      body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
     });
   } catch (cause) {
     throw new Stack360UnreachableError(cause);

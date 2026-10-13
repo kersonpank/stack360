@@ -75,6 +75,14 @@ def require_read(
     return _auth(db, authorization, x_api_key, "read")
 
 
+def require_admin(
+    db: Session = Depends(db_session),
+    authorization: Optional[str] = Header(default=None),
+    x_api_key: Optional[str] = Header(default=None, alias="X-API-Key"),
+) -> AuthContext:
+    return _auth(db, authorization, x_api_key, "admin")
+
+
 def sessionmaker_dep():
     return get_sessionmaker()
 

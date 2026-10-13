@@ -19,6 +19,12 @@
 #     gerar: docker run --rm httpd:2.4-alpine htpasswd -nbB admin 'SUA_SENHA'
 #   STACK360_API_KEY        API key (st_..., scope read) que o dashboard usa pra falar com a API
 #     gerar dentro do container api: python -m app.stack360.admin create-api-key --workspace <slug> --name web --scopes read
+#   STACK360_ADMIN_API_KEY  API key (st_..., scope admin) pra /settings/api-keys criar/revogar keys
+#     gerar: python -m app.stack360.admin create-api-key --workspace <slug> --name admin-bootstrap --scopes admin
+#   ADMIN_USERNAME          usuário do login do dashboard (default "admin")
+#   ADMIN_PASSWORD_HASH     hash bcrypt da senha do login — NUNCA texto puro. Gerar:
+#     docker run --rm httpd:2.4-alpine htpasswd -nbB admin 'SUA_SENHA' (usa só a parte depois do ":")
+#   SESSION_SECRET          assina o cookie de sessão — gerar: openssl rand -base64 32
 #   STACK360_CORS_ORIGINS, STACK360_WEBHOOK_SECRET_KEY — opcionais (vazio ok)
 
 version: "3.8"
@@ -91,6 +97,10 @@ services:
       # pelo Traefik/domínio público pra tráfego servidor-servidor.
       STACK360_API_BASE_URL: http://api:8000
       STACK360_API_KEY: ${STACK360_API_KEY}
+      STACK360_ADMIN_API_KEY: ${STACK360_ADMIN_API_KEY}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH}
+      SESSION_SECRET: ${SESSION_SECRET}
     networks:
       - internal
       - proxy

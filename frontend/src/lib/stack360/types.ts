@@ -145,6 +145,41 @@ export type PersonContext = {
   scores?: Score[];
 };
 
+// --- Admin (gestão de workspace/source/api-key — scope "admin") ---
+
+export type AdminWorkspace = {
+  id: string;
+  slug: string;
+  name: string;
+};
+
+export type AdminSource = {
+  id: string;
+  key: string;
+  name: string;
+  source_type: string;
+  status: string;
+};
+
+export type AdminApiKey = {
+  id: string;
+  name: string;
+  key_prefix: string;
+  scopes: string[];
+  status: string;
+  source_key: string | null;
+  created_at: string;
+  last_used_at: string | null;
+};
+
+export type CreatedApiKey = {
+  id: string;
+  name: string;
+  key_prefix: string;
+  scopes: string[];
+  plaintext: string;
+};
+
 export type CompanyContext = {
   company: CompanyDetail;
   people?: CompanyPersonLink[];

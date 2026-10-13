@@ -19,7 +19,7 @@ from app.stack360.models.workspace import Workspace
 from app.stack360.schemas.errors import ErrorCode, Stack360Error
 from app.stack360.security.hashing import sha256_hex
 
-VALID_SCOPES = {"ingest", "read", "mcp"}
+VALID_SCOPES = {"ingest", "read", "mcp", "admin"}
 
 
 @dataclass(frozen=True)

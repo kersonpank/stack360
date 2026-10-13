@@ -15,3 +15,7 @@ export function getStack360ApiBaseUrl(): string {
 export function getStack360ApiKey(): string {
   return readEnv("STACK360_API_KEY");
 }
+
+export function getStack360AdminApiKey(): string {
+  return readEnv("STACK360_ADMIN_API_KEY");
+}
