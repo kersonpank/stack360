@@ -32,7 +32,11 @@ READERS: list[ReaderConfig] = [
         name="whatsapp-legacy",
         source_type="whatsapp-legacy",
         reader=whatsapp_legacy.iter_envelopes,
-        database_url_env="DATABASE_URL",
+        # NÃO usar "DATABASE_URL" aqui — no container `api` do Stack360 essa
+        # variável já foi repropositada pro Postgres do PRÓPRIO Stack360
+        # (compat com Alembic/config legado), não pro banco legado do
+        # WhatsApp. Precisa de uma env var própria, sem ambiguidade.
+        database_url_env="LEGACY_WHATSAPP_DATABASE_URL",
     ),
 ]
 

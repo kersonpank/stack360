@@ -134,15 +134,19 @@ def recall_check(legacy_url: str, limit: int = 200) -> dict:
 def main(argv=None) -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     p = argparse.ArgumentParser(prog="app.stack360.projection.validate_against_legacy")
-    p.add_argument("--legacy-database-url", default=None, help="default: env DATABASE_URL")
+    p.add_argument(
+        "--legacy-database-url", default=None,
+        help="default: env LEGACY_WHATSAPP_DATABASE_URL (NÃO use DATABASE_URL — no container api"
+        " essa var já é o Postgres do próprio Stack360)",
+    )
     p.add_argument("--limit", type=int, default=200)
     args = p.parse_args(argv)
 
     import os
 
-    legacy_url = args.legacy_database_url or os.environ.get("DATABASE_URL")
+    legacy_url = args.legacy_database_url or os.environ.get("LEGACY_WHATSAPP_DATABASE_URL")
     if not legacy_url:
-        sys.exit("faltou --legacy-database-url ou env DATABASE_URL")
+        sys.exit("faltou --legacy-database-url ou env LEGACY_WHATSAPP_DATABASE_URL")
 
     report = recall_check(legacy_url, limit=args.limit)
     print(json.dumps(report, indent=2, ensure_ascii=False, default=str))
