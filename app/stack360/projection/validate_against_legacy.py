@@ -22,7 +22,8 @@ from typing import Optional
 from sqlalchemy import text
 
 from app.stack360.projection import legacy_rules as rules
-from app.stack360.projection.legacy_whatsapp import _extract_text, legacy_engine
+from app.stack360.projection.extractors.whatsapp_message import _message_text as _extract_text
+from app.stack360.projection.readers.base import readonly_engine as legacy_engine
 
 log = logging.getLogger("stack360.projection.validate_against_legacy")
 
